@@ -2,31 +2,18 @@
 #############################################################
 # par-latex:
 #############################################################
-# Description :
 # Written by : Emmanuel Branlard
 # Date : October 2013
 # Dependencies : python
 # License : Feel free to modify and adapt it
-# Usage : 
-#     ./
+#
+# More info : http://github.com/elmanuelito/par-latex
+#    
 #############################################################
-
-#############################################################
-# Modify me
-#############################################################
-
-import argparse
-import shutil
-import os
-import sys
-
-DESCRIPTION="""Description: 
-   
-    """
-
 import fileinput
 import textwrap
 import re
+import sys
 
 # --------------------------------------------------------------------------------
 # --- Parameters  
@@ -131,11 +118,11 @@ for line in fileinput.input():
         # we concatenate the line
         cat_line=cat_line+line
 
-# Safety
+# Safety (I don't really recall if this is usefull...)
 if len(cat_line)>0:
        # We reformat the paragraph
        dedented_text = textwrap.dedent(cat_line.strip())
-       wrapped_text  = textwrap.fill(dedented_text, width=width)
+       wrapped_text  = textwrap.fill(dedented_text, width=width, break_on_hyphens=False,break_long_words=False)
        sys.stdout.write(wrapped_text + '\n')
 #         sys.stdout.write('catline:'+wrapped_text)
        cat_line=''
