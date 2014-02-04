@@ -1,0 +1,141 @@
+#!/usr/bin/env python
+#############################################################
+# par-latex:
+#############################################################
+# Description :
+# Written by : Emmanuel Branlard
+# Date : October 2013
+# Dependencies : python
+# License : Feel free to modify and adapt it
+# Usage : 
+#     ./
+#############################################################
+
+#############################################################
+# Modify me
+#############################################################
+
+import argparse
+import shutil
+import os
+import sys
+
+DESCRIPTION="""Description: 
+   
+    """
+
+import fileinput
+import textwrap
+import re
+
+# --------------------------------------------------------------------------------
+# --- Parameters  
+# --------------------------------------------------------------------------------
+width=90
+latex_command_count=True  # If True, then latex commands starting with a slash (that are not begin) will be merged with the text of the paragraph
+format_inside_group=False  # If true, the wrapping of paragraph will be done within begin/end groups, otherwise the text will be left untouched
+
+
+# --------------------------------------------------------------------------------
+# --- The code..
+# --------------------------------------------------------------------------------
+pattern_latex_command  = re.compile(r'\s*\\')
+pattern_latex_section  = re.compile(r'\s*\\(part|chapter|section|subsection|subsubsection|image)')
+# pattern_latex_comment  = re.compile(r'\s*%')
+pattern_latex_comment  = re.compile(r'(.*[^\\]|\s*)%.*') # matching either "   %" or anything different than "\%" i.e. "sldjfksdfsfsldfkj%?dskfjskf"
+pattern_latex_begin    = re.compile(r'\\begin')
+pattern_latex_begin_doc= re.compile(r'\\begin\{(document|abstract)')
+pattern_latex_end      = re.compile(r'\\end')
+pattern_latex_end_doc  = re.compile(r'\\end\{(document|abstract)')
+pattern_empty_line     = re.compile(r'\s*$')
+
+dont_format=False
+in_group=False
+stop_cat=False
+n_group=0
+cat_line=''
+for line in fileinput.input():
+    l=line.strip()
+    if pattern_latex_comment.match(l):
+        # we dont reformat comments
+        dont_format=True
+        stop_cat=True
+#         sys.stdout.write('Comment:'+line)
+    elif pattern_latex_section.match(l):
+        # we never reformat section commands
+        dont_format=True
+        stop_cat=True
+    elif pattern_latex_command.match(l):
+        # starts with a latex string
+        stop_cat=True
+        n_begin=len(pattern_latex_begin.findall(l))
+        n_end  =len(pattern_latex_end.findall(l))
+        if n_begin==0 and n_end==0:
+            # it's a normal latex command, dont format
+            if latex_command_count:
+                dont_format=False
+            else:
+                dont_format=True
+#             sys.stdout.write('Cmd:'+line)
+            pass
+        else:
+            # Handling of begin and end
+            if n_begin==n_end:
+                # we just pass
+                dont_format=True
+#                 sys.stdout.write('BeginEnd:'+line)
+            else:
+                # Is it Begin document?
+                if pattern_latex_begin_doc.match(l):
+                    # That's begin document, dont reformat
+                    dont_format=True
+#                     sys.stdout.write('BeginDo:'+line)
+                # Is it End document?
+                elif pattern_latex_end_doc.match(l):
+                    # That's end document, dont reformat
+                    dont_format=True
+                    n_group=0;
+                else:
+#                     sys.stdout.write('BeginOrEnd:'+line)
+                    dont_format=True
+                    n_group=n_group+n_begin-n_end;
+                    if n_group<0:
+                        n_group=0;
+#                         print 'ERROR, more end than begin found'
+#                         break
+    elif pattern_empty_line.match(l):
+        # Empty lines stop the concatenation (indicates a change of paragraph)
+        stop_cat=True
+        dont_format=True
+
+    else:
+        stop_cat=False
+        dont_format=False
+
+    if stop_cat and len(cat_line)>0:
+       # We reformat the paragraph
+       dedented_text = textwrap.dedent(cat_line.strip())
+       wrapped_text  = textwrap.fill(dedented_text, width=width, break_on_hyphens=False,break_long_words=False)
+       sys.stdout.write(wrapped_text + '\n')
+#         sys.stdout.write('catline:'+wrapped_text)
+       cat_line=''
+
+    in_group=(n_group>0)
+    if in_group and not format_inside_group:
+        sys.stdout.write(line)
+    elif in_group and  format_inside_group:
+        sys.stdout.write(line)
+    elif dont_format:
+        sys.stdout.write(line)
+    else:
+        # we concatenate the line
+        cat_line=cat_line+line
+
+# Safety
+if len(cat_line)>0:
+       # We reformat the paragraph
+       dedented_text = textwrap.dedent(cat_line.strip())
+       wrapped_text  = textwrap.fill(dedented_text, width=width)
+       sys.stdout.write(wrapped_text + '\n')
+#         sys.stdout.write('catline:'+wrapped_text)
+       cat_line=''
